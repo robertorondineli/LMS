@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Analytics - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <!-- Cabeçalho do Curso -->
+    <div class="course-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2>{{ course.title }}</h2>
+                <p class="text-muted">
+                    <i class="fas fa-user-graduate me-2"></i>{{ course.students.count }} alunos matriculados
+                    <span class="mx-3">|</span>
+                    <i class="fas fa-book me-2"></i>{{ course.modules.count }} módulos
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary">
+                    <i class="fas fa-eye"></i> Ver Curso
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Principais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ completion_rate|floatformat:1 }}%</div>
+                <div class="metric-label">Taxa de Conclusão</div>
+                <div class="progress progress-small mt-2">
+                    <div class="progress-bar" style="width: {{ completion_rate }}%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ avg_time_spent|time:"H:i" }}</div>
+                <div class="metric-label">Tempo Médio de Estudo</div>
+                <div class="metric-trend">
+                    <i class="fas fa-clock text-primary"></i> Por aluno
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ avg_quiz_score|floatformat:1 }}%</div>
+                <div class="metric-label">Média nas Avaliações</div>
+                <div class="metric-trend">
+                    <i class="fas fa-chart-line"></i> {{ quiz_completion_rate }}% concluídos
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ engagement_score|floatformat:1 }}</div>
+                <div class="metric-label">Índice de Engajamento</div>
+                <div class="metric-trend text-{{ engagement_trend_class }}">
+                    <i class="fas fa-arrow-{{ engagement_trend_direction }}"></i> 
+                    {{ engagement_trend }}% vs média geral
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos de Performance -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5>Progresso dos Alunos ao Longo do Tempo</h5>
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5>Distribuição de Notas</h5>
+                <canvas id="gradesDistribution"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance do Conteúdo -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance por Conteúdo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Conteúdo</th>
+                                    <th>Tipo</th>
+                                    <th>Visualizações</th>
+                                    <th>Tempo Médio</th>
+                                    <th>Taxa de Conclusão</th>
+                                    <th>Feedback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for content in content_performance %}
+                                    <tr>
+                                        <td>{{ content.title }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ content.type_class }}">
+                                                {{ content.get_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ content.views }}</td>
+                                        <td>{{ content.avg_time_spent|time:"H:i:s" }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {{ content.completion_rate|floatformat:1 }}%
+                                                <div class="progress progress-small ms-2" style="width: 100px;">
+                                                    <div class="progress-bar" 
+                                                         style="width: {{ content.completion_rate }}%">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if content.feedback_score %}
+                                                <div class="rating">
+                                                    {% for i in "12345"|make_list %}
+                                                        <i class="fas fa-star {% if forloop.counter <= content.feedback_score %}text-warning{% else %}text-muted{% endif %}"></i>
+                                                    {% endfor %}
+                                                    <small class="ms-2">
+                                                        ({{ content.feedback_count }} avaliações)
+                                                    </small>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">Sem avaliações</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progresso dos Alunos -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Progresso dos Alunos</h5>
+                    <div class="input-group" style="width: 300px;">
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="Buscar aluno..."
+                               id="studentSearch">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Aluno</th>
+                                    <th>Progresso</th>
+                                    <th>Último Acesso</th>
+                                    <th>Tempo Total</th>
+                                    <th>Média</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for progress in student_progress %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="{{ progress.user.profile_picture.url|default:'default_avatar.png' }}" 
+                                                     class="rounded-circle me-2" 
+                                                     width="32" height="32">
+                                                {{ progress.user.get_full_name }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {{ progress.progress_percentage|floatformat:1 }}%
+                                                <div class="progress progress-small ms-2" style="width: 100px;">
+                                                    <div class="progress-bar" 
+                                                         style="width: {{ progress.progress_percentage }}%">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ progress.last_activity|timesince }} atrás</td>
+                                        <td>{{ progress.total_time_spent|time:"H:i" }}</td>
+                                        <td>{{ progress.quiz_average|floatformat:1 }}%</td>
+                                        <td>
+                                            <span class="badge bg-{{ progress.status_class }}">
+                                                {{ progress.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Progresso
+    const progressCtx = document.getElementById('progressChart').getContext('2d');
+    new Chart(progressCtx, {
+        type: 'line',
+        data: {
+            labels: {{ progress_dates|safe }},
+            datasets: [{
+                label: 'Progresso Médio',
+                data: {{ progress_data|safe }},
+                borderColor: '#0d6efd',
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Gráfico de Distribuição de Notas
+    const gradesCtx = document.getElementById('gradesDistribution').getContext('2d');
+    new Chart(gradesCtx, {
+        type: 'bar',
+        data: {
+            labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
+            datasets: [{
+                label: 'Alunos',
+                data: {{ grades_distribution|safe }},
+                backgroundColor: '#0d6efd'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Busca de alunos
+    const studentSearch = document.getElementById('studentSearch');
+    const studentsTable = document.getElementById('studentsTable');
+    
+    studentSearch.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = studentsTable.getElementsByTagName('tr');
+        
+        for (let row of rows) {
+            if (row.getElementsByTagName('td').length) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

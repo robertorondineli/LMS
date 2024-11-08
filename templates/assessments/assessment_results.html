@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resultados - {{ user_assessment.assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="results-container py-5">
+    <div class="container">
+        <!-- Cabeçalho com Resultado Principal -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto text-center">
+                <div class="result-header">
+                    <div class="score-circle {% if passed %}passed{% else %}failed{% endif %}">
+                        {{ user_assessment.score|floatformat:1 }}%
+                    </div>
+                    
+                    <h2 class="mt-4">
+                        {% if passed %}
+                            <i class="fas fa-check-circle text-success"></i>
+                            Parabéns! Você foi aprovado!
+                        {% else %}
+                            <i class="fas fa-times-circle text-danger"></i>
+                            Não foi dessa vez
+                        {% endif %}
+                    </h2>
+                    
+                    <p class="text-muted">
+                        Nota mínima para aprovação: {{ user_assessment.assessment.passing_score }}%
+                    </p>
+                    
+                    <div class="result-stats">
+                        <div class="stat-item">
+                            <i class="fas fa-clock"></i>
+                            Tempo: {{ user_assessment.time_spent|time:"H:i:s" }}
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-check"></i>
+                            Acertos: {{ feedback.correct_count }}/{{ feedback.total_questions }}
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-star"></i>
+                            Tentativa: {{ user_assessment.attempt_number }}/{{ user_assessment.assessment.attempts_allowed }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Análise Detalhada -->
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <!-- Gráficos de Desempenho -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4 class="card-title">Análise de Desempenho</h4>
+                        
+                        <!-- Gráfico de Categorias -->
+                        <div class="performance-chart">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                        
+                        <!-- Distribuição de Pontos -->
+                        <div class="points-distribution mt-4">
+                            <h5>Distribuição de Pontos</h5>
+                            <div class="progress">
+                                {% for category, data in feedback.categories.items %}
+                                    <div class="progress-bar bg-{{ data.color }}" 
+                                         role="progressbar"
+                                         style="width: {{ data.percentage }}%"
+                                         title="{{ category }}: {{ data.points }} pontos">
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="distribution-legend">
+                                {% for category, data in feedback.categories.items %}
+                                    <div class="legend-item">
+                                        <span class="color-dot bg-{{ data.color }}"></span>
+                                        {{ category }}: {{ data.points }} pontos
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revisão das Questões -->
+                <div class="questions-review">
+                    <h4 class="mb-4">Revisão das Questões</h4>
+                    
+                    {% for question in feedback.questions %}
+                        <div class="question-card mb-4">
+                            <div class="question-header">
+                                <span class="question-number">Questão {{ forloop.counter }}</span>
+                                <span class="question-points">
+                                    {{ question.points_earned }}/{{ question.total_points }} pontos
+                                </span>
+                            </div>
+                            
+                            <div class="question-content">
+                                {{ question.question|safe }}
+                            </div>
+                            
+                            <!-- Sua Resposta -->
+                            <div class="answer-section">
+                                <h6>Sua Resposta:</h6>
+                                {% if question.type == 'MULTIPLE_CHOICE' or question.type == 'TRUE_FALSE' %}
+                                    {% for option in question.selected_options %}
+                                        <div class="answer-option {% if option.correct %}correct{% elif not option.correct %}incorrect{% endif %}">
+                                            <i class="fas fa-{% if option.correct %}check{% else %}times{% endif %}"></i>
+                                            {{ option.content }}
+                                        </div>
+                                    {% endfor %}
+                                {% elif question.type == 'ESSAY' %}
+                                    <div class="essay-answer">
+                                        {{ question.text_answer|linebreaks }}
+                                    </div>
+                                {% elif question.type == 'CODING' %}
+                                    <div class="code-answer">
+                                        <pre><code class="language-python">{{ question.code }}</code></pre>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Resposta Correta (se mostrar) -->
+                            {% if user_assessment.assessment.show_answers %}
+                                <div class="correct-answer">
+                                    <h6>Resposta Correta:</h6>
+                                    {% if question.type == 'MULTIPLE_CHOICE' or question.type == 'TRUE_FALSE' %}
+                                        {% for option in question.correct_options %}
+                                            <div class="answer-option correct">
+                                                <i class="fas fa-check"></i>
+                                                {{ option }}
+                                            </div>
+                                        {% endfor %}
+                                    {% elif question.type == 'ESSAY' %}
+                                        <div class="model-answer">
+                                            {{ question.model_answer|linebreaks }}
+                                        </div>
+                                    {% elif question.type == 'CODING' %}
+                                        <div class="code-answer">
+                                            <pre><code class="language-python">{{ question.solution_code }}</code></pre>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Feedback -->
+                            <div class="feedback-section">
+                                <div class="feedback-card {% if question.is_correct %}correct{% else %}incorrect{% endif %}">
+                                    <h6>Feedback:</h6>
+                                    {{ question.feedback|linebreaks }}
+                                    
+                                    {% if question.explanation %}
+                                        <div class="explanation mt-2">
+                                            <h6>Explicação:</h6>
+                                            {{ question.explanation|linebreaks }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if question.suggestions %}
+                                    <div class="suggestions mt-3">
+                                        <h6>Sugestões de Estudo:</h6>
+                                        <ul>
+                                            {% for suggestion in question.suggestions %}
+                                                <li>
+                                                    <a href="{{ suggestion.url }}" target="_blank">
+                                                        {{ suggestion.title }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Ações Finais -->
+                <div class="actions-section text-center mt-5">
+                    {% if not passed and user_assessment.attempt_number < user_assessment.assessment.attempts_allowed %}
+                        <a href="{% url 'start_assessment' user_assessment.assessment.id %}" 
+                           class="btn btn-primary btn-lg">
+                            Tentar Novamente
+                        </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'course_detail' user_assessment.assessment.course.id %}" 
+                       class="btn btn-outline-primary btn-lg ms-3">
+                        Voltar ao Curso
+                    </a>
+                    
+                    {% if passed %}
+                        <a href="{% url 'download_certificate' user_assessment.id %}" 
+                           class="btn btn-success btn-lg ms-3">
+                            <i class="fas fa-award"></i>
+                            Baixar Certificado
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.results-container {
+    background: #f8f9fa;
+}
+
+.score-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0 auto;
+    color: white;
+}
+
+.score-circle.passed {
+    background: linear-gradient(45deg, #28a745, #20c997);
+}
+
+.score-circle.failed {
+    background: linear-gradient(45deg, #dc3545, #f86c6b);
+}
+
+.result-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-item i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #6c757d;
+}
+
+.performance-chart {
+    height: 300px;
+}
+
+.points-distribution {
+    margin-top: 2rem;
+}
+
+.distribution-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.question-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.answer-option {
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.answer-option.correct {
+    background: #d4edda;
+    color: #155724;
+}
+
+.answer-option.incorrect {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.feedback-card {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.feedback-card.correct {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.feedback-card.incorrect {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+}
+
+.code-answer {
+    background: #272822;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.code-answer pre {
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .result-stats {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Categorias
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: {{ feedback.category_labels|safe }},
+            datasets: [{
+                label: 'Seu Desempenho',
+                data: {{ feedback.category_scores|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+    
+    // Highlight de código
+    document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightBlock(block);
+    });
+});
+</script>
+{% endblock %} 

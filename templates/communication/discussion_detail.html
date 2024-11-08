@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ discussion.title }}{% endblock %}
+
+{% block content %}
+<div class="discussion-container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'courses:course_detail' discussion.course.slug %}">
+                    {{ discussion.course.title }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'communication:discussion_list' discussion.course.id %}">
+                    Discussões
+                </a>
+            </li>
+            <li class="breadcrumb-item active">{{ discussion.title }}</li>
+        </ol>
+    </nav>
+
+    <!-- Discussão Principal -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <h2 class="card-title">{{ discussion.title }}</h2>
+                {% if discussion.is_pinned %}
+                    <span class="badge bg-primary">
+                        <i class="fas fa-thumbtack"></i> Fixado
+                    </span>
+                {% endif %}
+            </div>
+            
+            <div class="discussion-meta mb-3">
+                <img src="{{ discussion.author.profile_picture.url|default:'default_avatar.png' }}" 
+                     class="rounded-circle me-2" 
+                     width="40">
+                <span class="text-muted">
+                    Por {{ discussion.author.get_full_name }}
+                    {{ discussion.created_at|timesince }} atrás
+                </span>
+            </div>
+            
+            <div class="discussion-content">
+                {{ discussion.content|linebreaks }}
+            </div>
+            
+            {% if user == discussion.author or user.is_instructor %}
+                <div class="discussion-actions mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editDiscussion()">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    {% if user.is_instructor %}
+                        <button class="btn btn-outline-warning btn-sm" onclick="togglePin()">
+                            <i class="fas fa-thumbtack"></i> 
+                            {% if discussion.is_pinned %}Desafixar{% else %}Fixar{% endif %}
+                        </button>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Seção de Comentários -->
+    <div class="comments-section">
+        <h4 class="mb-4">
+            Respostas ({{ comments.count }})
+        </h4>
+        
+        <!-- Form de Resposta -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="post" id="commentForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <textarea class="form-control" 
+                                 name="content" 
+                                 rows="3" 
+                                 placeholder="Escreva sua resposta..."
+                                 required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        Responder
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de Comentários -->
+        {% for comment in comments %}
+            <div class="card mb-3 {% if comment.is_solution %}border-success{% endif %}" 
+                 id="comment-{{ comment.id }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="comment-meta">
+                            <img src="{{ comment.author.profile_picture.url|default:'default_avatar.png' }}" 
+                                 class="rounded-circle me-2" 
+                                 width="30">
+                            <span class="fw-bold">{{ comment.author.get_full_name }}</span>
+                            <small class="text-muted">{{ comment.created_at|timesince }} atrás</small>
+                        </div>
+                        {% if comment.is_solution %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check"></i> Solução
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="comment-content mt-3">
+                        {{ comment.content|linebreaks }}
+                    </div>
+                    
+                    <div class="comment-actions mt-3">
+                        <button class="btn btn-link btn-sm" onclick="replyToComment({{ comment.id }})">
+                            Responder
+                        </button>
+                        {% if user == discussion.author and not comment.is_solution %}
+                            <button class="btn btn-link btn-sm text-success" 
+                                    onclick="markAsSolution({{ comment.id }})">
+                                Marcar como Solução
+                            </button>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Respostas ao comentário -->
+                    {% if comment.comment_set.exists %}
+                        <div class="replies mt-3">
+                            {% for reply in comment.comment_set.all %}
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <div class="reply-meta">
+                                            <small>
+                                                <img src="{{ reply.author.profile_picture.url|default:'default_avatar.png' }}" 
+                                                     class="rounded-circle me-1" 
+                                                     width="20">
+                                                {{ reply.author.get_full_name }}
+                                                {{ reply.created_at|timesince }} atrás
+                                            </small>
+                                        </div>
+                                        <div class="reply-content mt-2">
+                                            {{ reply.content|linebreaks }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5>Nenhuma resposta ainda</h5>
+                <p class="text-muted">Seja o primeiro a responder!</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editDiscussion() {
+    // Implementar edição via AJAX
+}
+
+function togglePin() {
+    fetch('{% url "communication:discussion_toggle_pin" discussion.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+        }
+    }).then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            location.reload();
+        }
+    });
+}
+
+function replyToComment(commentId) {
+    const form = document.getElementById('commentForm');
+    form.action = `{% url 'communication:comment_reply' %}?parent=${commentId}`;
+    form.scrollIntoView({ behavior: 'smooth' });
+}
+
+function markAsSolution(commentId) {
+    fetch(`{% url 'communication:mark_solution' %}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            comment_id: commentId
+        })
+    }).then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.discussion-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.discussion-meta img {
+    object-fit: cover;
+}
+
+.comment-content {
+    font-size: 0.95rem;
+}
+
+.replies {
+    margin-left: 30px;
+    border-left: 2px solid #dee2e6;
+    padding-left: 20px;
+}
+
+.reply-content {
+    font-size: 0.9rem;
+}
+
+.comment-actions .btn-link {
+    padding: 0;
+    margin-right: 15px;
+    text-decoration: none;
+}
+
+.card.border-success {
+    border-width: 2px;
+}
+</style>
+{% endblock %} 

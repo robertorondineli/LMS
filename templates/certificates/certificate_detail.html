@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ certificate.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="certificate-detail-card">
+                <!-- Cabeçalho -->
+                <div class="certificate-header">
+                    <h2>{{ certificate.title }}</h2>
+                    <div class="certificate-actions">
+                        <a href="{{ certificate.image.url }}" 
+                           download 
+                           class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button class="btn btn-outline-primary ms-2" 
+                                onclick="shareCertificate()">
+                            <i class="fas fa-share-alt"></i> Compartilhar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visualização do Certificado -->
+                <div class="certificate-viewer">
+                    <img src="{{ certificate.image.url }}" 
+                         alt="Certificado {{ certificate.title }}"
+                         class="img-fluid">
+                </div>
+
+                <!-- Informações do Certificado -->
+                <div class="certificate-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label>Curso</label>
+                                <p>{{ certificate.course.title }}</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Tipo</label>
+                                <p>{{ certificate.get_type_display }}</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Data de Emissão</label>
+                                <p>{{ certificate.issued_at|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label>Código de Verificação</label>
+                                <p class="verification-code">
+                                    {{ certificate.verification_code }}
+                                    <button class="btn btn-sm btn-link" 
+                                            onclick="copyVerificationCode()">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </p>
+                            </div>
+                            <div class="info-item">
+                                <label>Link de Verificação</label>
+                                <p class="verification-link">
+                                    <a href="{% url 'certificates:verify' certificate.verification_code %}" 
+                                       target="_blank">
+                                        Verificar Autenticidade
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code -->
+                <div class="certificate-qr text-center mt-4">
+                    <img src="data:image/png;base64,{{ qr_code }}" 
+                         alt="QR Code de verificação"
+                         width="150">
+                    <p class="text-muted mt-2">
+                        Escaneie para verificar a autenticidade
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.certificate-detail-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.certificate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.certificate-viewer {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.certificate-viewer img {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.certificate-info {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.info-item {
+    margin-bottom: 20px;
+}
+
+.info-item label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.info-item p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.verification-code {
+    font-family: monospace;
+    background: #e9ecef;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.certificate-qr {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyVerificationCode() {
+    const code = '{{ certificate.verification_code }}';
+    navigator.clipboard.writeText(code).then(() => {
+        showToast('Código copiado!');
+    });
+}
+
+function shareCertificate() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ certificate.title }}',
+            text: 'Confira meu certificado de {{ certificate.course.title }}!',
+            url: window.location.href
+        });
+    } else {
+        copyToClipboard(window.location.href);
+        showToast('Link copiado para a área de transferência!');
+    }
+}
+
+function showToast(message) {
+    // Implementação do toast
+}
+</script>
+{% endblock %} 

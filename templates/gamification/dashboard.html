@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Gamificação - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações do Usuário -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <img src="{{ user.profile_picture.url|default:'default_avatar.png' }}" 
+                     class="rounded-circle mb-3" 
+                     style="width: 150px; height: 150px;">
+                <h4>{{ user.get_full_name }}</h4>
+                
+                <div class="level-info mt-3">
+                    <h5>Nível {{ user_level.current_level.number }}</h5>
+                    <p class="text-muted">{{ user_level.current_level.name }}</p>
+                    
+                    <div class="progress">
+                        {% with progress=user_level.get_level_progress %}
+                        <div class="progress-bar" 
+                             role="progressbar" 
+                             style="width: {{ progress }}%;"
+                             aria-valuenow="{{ progress }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ progress }}%
+                        </div>
+                        {% endwith %}
+                    </div>
+                    
+                    <small class="text-muted">
+                        {{ user_level.points_to_next_level }} pontos para o próximo nível
+                    </small>
+                </div>
+                
+                <div class="total-points mt-3">
+                    <h3>{{ total_points }}</h3>
+                    <p class="text-muted">Pontos Totais</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Streak -->
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h5>Sequência de Atividades</h5>
+                <div class="streak-info">
+                    <h3>{{ streak.current_streak }}</h3>
+                    <p>dias consecutivos</p>
+                    <small class="text-muted">
+                        Maior sequência: {{ streak.longest_streak }} dias
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Conquistas -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Suas Conquistas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row row-cols-2 row-cols-md-3 g-4">
+                    {% for achievement in achievements %}
+                    <div class="col">
+                        <div class="achievement-card text-center">
+                            <img src="{{ achievement.badge.icon.url }}" 
+                                 class="achievement-icon" 
+                                 alt="{{ achievement.badge.name }}">
+                            <h6>{{ achievement.badge.name }}</h6>
+                            <small class="text-muted">
+                                {{ achievement.earned_at|date:"d/m/Y" }}
+                            </small>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center">
+                        <p class="text-muted">Você ainda não tem conquistas.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Histórico de Pontos -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Histórico de Pontos</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Pontos</th>
+                                <th>Tipo</th>
+                                <th>Descrição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for point in recent_points %}
+                            <tr>
+                                <td>{{ point.earned_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ point.amount }}</td>
+                                <td>
+                                    <span class="badge bg-{{ point.get_type_color }}">
+                                        {{ point.get_point_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ point.description }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

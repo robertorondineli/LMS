@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Conquistas Disponíveis{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                    Todas
+                </button>
+                {% for type, name in achievement_types %}
+                    <button type="button" class="btn btn-outline-primary" data-filter="{{ type }}">
+                        {{ name }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="levelFilter">
+                <option value="all">Todos os Níveis</option>
+                {% for level, name in achievement_levels %}
+                    <option value="{{ level }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Grade de Conquistas -->
+    <div class="row" id="achievementsGrid">
+        {% for achievement in achievements %}
+            <div class="col-md-4 mb-4 achievement-item" 
+                 data-type="{{ achievement.type }}"
+                 data-level="{{ achievement.level }}">
+                <div class="achievement-card {% if achievement in user_achievements %}earned{% endif %}">
+                    <div class="achievement-header">
+                        <div class="achievement-icon achievement-{{ achievement.level|lower }}">
+                            <i class="{{ achievement.icon }}"></i>
+                        </div>
+                        <div class="achievement-points">
+                            {{ achievement.points }} pontos
+                        </div>
+                    </div>
+                    
+                    <div class="achievement-content">
+                        <h5>{{ achievement.name }}</h5>
+                        <p class="text-muted">{{ achievement.description }}</p>
+                        
+                        {% if achievement in user_achievements %}
+                            <div class="achievement-earned">
+                                <i class="fas fa-check-circle"></i>
+                                Conquistado em {{ user_achievements|get_earned_date:achievement|date }}
+                            </div>
+                        {% else %}
+                            <div class="achievement-progress">
+                                <div class="progress">
+                                    <div class="progress-bar" 
+                                         role="progressbar" 
+                                         style="width: {{ achievement|get_progress:request.user }}%">
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    {{ achievement|get_progress:request.user }}% completo
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.achievement-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    height: 100%;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.achievement-card:not(.earned) {
+    filter: grayscale(100%);
+    opacity: 0.7;
+}
+
+.achievement-card:not(.earned):hover {
+    filter: grayscale(0);
+    opacity: 1;
+    transform: translateY(-5px);
+}
+
+.achievement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.achievement-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.achievement-points {
+    background: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.achievement-earned {
+    color: #28a745;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.achievement-progress {
+    margin-top: 15px;
+}
+
+.achievement-card.earned::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 60px;
+    height: 60px;
+    background: #28a745;
+    transform: rotate(45deg);
+}
+
+.achievement-card.earned::before {
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    color: white;
+    z-index: 1;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtro por tipo
+    const typeButtons = document.querySelectorAll('[data-filter]');
+    typeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class
+            typeButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            const filter = button.dataset.filter;
+            filterAchievements();
+        });
+    });
+    
+    // Filtro por nível
+    const levelSelect = document.getElementById('levelFilter');
+    levelSelect.addEventListener('change', filterAchievements);
+    
+    function filterAchievements() {
+        const selectedType = document.querySelector('[data-filter].active').dataset.filter;
+        const selectedLevel = levelSelect.value;
+        
+        const achievements = document.querySelectorAll('.achievement-item');
+        achievements.forEach(achievement => {
+            const showType = selectedType === 'all' || achievement.dataset.type === selectedType;
+            const showLevel = selectedLevel === 'all' || achievement.dataset.level === selectedLevel;
+            
+            achievement.style.display = showType && showLevel ? 'block' : 'none';
+        });
+    }
+    
+    // Animação ao conquistar
+    function checkNewAchievements() {
+        fetch('/api/achievements/check/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.new_achievements.length > 0) {
+                    data.new_achievements.forEach(achievement => {
+                        const card = document.querySelector(`[data-achievement-id="${achievement.id}"]`);
+                        if (card) {
+                            card.classList.add('earned');
+                            showAchievementNotification(achievement);
+                        }
+                    });
+                }
+            });
+    }
+    
+    function showAchievementNotification(achievement) {
+        const notification = document.createElement('div');
+        notification.className = 'achievement-notification';
+        notification.innerHTML = `
+            <div class="achievement-notification-icon achievement-${achievement.level.toLowerCase()}">
+                <i class="${achievement.icon}"></i>
+            </div>
+            <div class="achievement-notification-content">
+                <h6>Nova Conquista!</h6>
+                <p>${achievement.name}</p>
+                <small>+${achievement.points} pontos</small>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 5000);
+    }
+    
+    // Verifica novas conquistas a cada 5 minutos
+    setInterval(checkNewAchievements, 300000);
+});
+</script>
+{% endblock %} 

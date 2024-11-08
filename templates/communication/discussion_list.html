@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Discussões - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>Discussões do Curso</h2>
+        <p class="text-muted">{{ course.title }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newDiscussionModal">
+            <i class="fas fa-plus"></i> Nova Discussão
+        </button>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="btn-group" role="group">
+            <a href="?filter=all" class="btn btn-outline-primary {% if not request.GET.filter %}active{% endif %}">
+                Todas
+            </a>
+            <a href="?filter=my_discussions" class="btn btn-outline-primary {% if request.GET.filter == 'my_discussions' %}active{% endif %}">
+                Minhas Discussões
+            </a>
+            <a href="?filter=no_answers" class="btn btn-outline-primary {% if request.GET.filter == 'no_answers' %}active{% endif %}">
+                Sem Respostas
+            </a>
+            <a href="?filter=solved" class="btn btn-outline-primary {% if request.GET.filter == 'solved' %}active{% endif %}">
+                Resolvidas
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <form method="get" class="search-form">
+            <div class="input-group">
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="Buscar discussões..."
+                       value="{{ request.GET.search }}">
+                <button class="btn btn-outline-secondary" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Discussões -->
+<div class="discussion-list">
+    {% for discussion in discussions %}
+        <div class="card mb-3 discussion-card {% if discussion.is_pinned %}pinned{% endif %}">
+            <div class="card-body">
+                <div class="row">
+                    <!-- Contador de Respostas -->
+                    <div class="col-md-1 text-center">
+                        <div class="response-count">
+                            <h4>{{ discussion.comment_set.count }}</h4>
+                            <small>respostas</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Conteúdo Principal -->
+                    <div class="col-md-9">
+                        <h5 class="card-title">
+                            {% if discussion.is_pinned %}
+                                <i class="fas fa-thumbtack text-primary"></i>
+                            {% endif %}
+                            <a href="{% url 'communication:discussion_detail' discussion.pk %}" 
+                               class="text-decoration-none">
+                                {{ discussion.title }}
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted">
+                            {{ discussion.content|truncatewords:30 }}
+                        </p>
+                        <div class="discussion-meta">
+                            <small class="text-muted">
+                                Iniciada por {{ discussion.author.get_full_name }} 
+                                {{ discussion.created_at|timesince }} atrás
+                                {% if discussion.comment_set.filter(is_solution=True).exists %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i> Resolvida
+                                    </span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Estatísticas -->
+                    <div class="col-md-2 text-end">
+                        <div class="discussion-stats">
+                            <small class="text-muted">
+                                <i class="fas fa-eye"></i> {{ discussion.views_count }} visualizações
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i> 
+                                Última atividade {{ discussion.updated_at|timesince }} atrás
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center py-5">
+            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+            <h4>Nenhuma discussão encontrada</h4>
+            <p class="text-muted">
+                Seja o primeiro a iniciar uma discussão neste curso!
+            </p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newDiscussionModal">
+                Criar Nova Discussão
+            </button>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Paginação -->
+{% if is_paginated %}
+    <nav aria-label="Navegação das discussões">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próximo</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+
+<!-- Modal Nova Discussão -->
+<div class="modal fade" id="newDiscussionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Discussão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'communication:discussion_create' course.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Conteúdo</label>
+                        <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar Discussão</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.discussion-card {
+    transition: transform 0.2s ease;
+}
+
+.discussion-card:hover {
+    transform: translateX(5px);
+}
+
+.discussion-card.pinned {
+    border-left: 4px solid #0d6efd;
+}
+
+.response-count {
+    color: #6c757d;
+}
+
+.response-count h4 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.discussion-meta {
+    margin-top: 10px;
+}
+
+.discussion-stats {
+    text-align: right;
+    color: #6c757d;
+}
+
+.search-form .input-group {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Centro de Notificações{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar de Filtros -->
+        <div class="col-md-3">
+            <div class="notification-filters card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Filtros</h5>
+                    
+                    <!-- Tipos de Notificação -->
+                    <div class="mb-4">
+                        <h6>Tipo</h6>
+                        <div class="notification-types">
+                            {% for type, name in notification_types %}
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                           class="form-check-input" 
+                                           id="type_{{ type }}"
+                                           value="{{ type }}"
+                                           checked>
+                                    <label class="form-check-label" for="type_{{ type }}">
+                                        {{ name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="mb-4">
+                        <h6>Status</h6>
+                        <div class="notification-status">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="status_unread"
+                                       value="unread"
+                                       checked>
+                                <label class="form-check-label" for="status_unread">
+                                    Não lidas
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="status_read"
+                                       value="read">
+                                <label class="form-check-label" for="status_read">
+                                    Lidas
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Período -->
+                    <div class="mb-4">
+                        <h6>Período</h6>
+                        <select class="form-select" id="period_filter">
+                            <option value="all">Todo período</option>
+                            <option value="today">Hoje</option>
+                            <option value="week">Última semana</option>
+                            <option value="month">Último mês</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Botões de Ação -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="markAllAsRead()">
+                            <i class="fas fa-check-double"></i> 
+                            Marcar todas como lidas
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="clearAllNotifications()">
+                            <i class="fas fa-trash"></i> 
+                            Limpar todas
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Notificações -->
+        <div class="col-md-9">
+            <div class="notifications-container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4>Suas Notificações</h4>
+                    <div class="notification-actions">
+                        <div class="btn-group">
+                            <button type="button" 
+                                    class="btn btn-outline-primary active"
+                                    data-view="list">
+                                <i class="fas fa-list"></i>
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-outline-primary"
+                                    data-view="grid">
+                                <i class="fas fa-th"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Notificações -->
+                <div class="notification-list" id="notificationList">
+                    {% for notification in notifications %}
+                        <div class="notification-item {% if not notification.read %}unread{% endif %}"
+                             data-type="{{ notification.type }}"
+                             data-id="{{ notification.id }}">
+                            <div class="notification-icon {{ notification.type|lower }}">
+                                {% if notification.type == 'COURSE' %}
+                                    <i class="fas fa-book"></i>
+                                {% elif notification.type == 'ACHIEVEMENT' %}
+                                    <i class="fas fa-trophy"></i>
+                                {% elif notification.type == 'REMINDER' %}
+                                    <i class="fas fa-bell"></i>
+                                {% elif notification.type == 'MENTION' %}
+                                    <i class="fas fa-at"></i>
+                                {% elif notification.type == 'DEADLINE' %}
+                                    <i class="fas fa-clock"></i>
+                                {% elif notification.type == 'SYSTEM' %}
+                                    <i class="fas fa-cog"></i>
+                                {% elif notification.type == 'FEEDBACK' %}
+                                    <i class="fas fa-comment"></i>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="notification-content">
+                                <div class="notification-header">
+                                    <h6>{{ notification.title }}</h6>
+                                    <span class="notification-time" 
+                                          title="{{ notification.created_at|date:'d/m/Y H:i' }}">
+                                        {{ notification.created_at|timesince }}
+                                    </span>
+                                </div>
+                                <p>{{ notification.message }}</p>
+                                
+                                {% if notification.content_object %}
+                                    <a href="{{ notification.content_object.get_absolute_url }}" 
+                                       class="notification-link">
+                                        Ver detalhes
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="notification-actions">
+                                {% if not notification.read %}
+                                    <button class="btn btn-link btn-sm"
+                                            onclick="markAsRead({{ notification.id }})">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-link btn-sm text-danger"
+                                        onclick="deleteNotification({{ notification.id }})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-5">
+                            <img src="{% static 'images/no-notifications.svg' %}" 
+                                 alt="Sem notificações"
+                                 class="mb-4"
+                                 style="max-width: 200px;">
+                            <h5>Nenhuma notificação</h5>
+                            <p class="text-muted">
+                                Você está em dia com todas as suas notificações!
+                            </p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Paginação -->
+                {% if is_paginated %}
+                    <div class="pagination justify-content-center mt-4">
+                        <span class="step-links">
+                            {% if page_obj.has_previous %}
+                                <a href="?page=1" class="btn btn-outline-primary">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                                <a href="?page={{ page_obj.previous_page_number }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            {% endif %}
+
+                            <span class="current mx-3">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                                <a href="?page={{ page_obj.paginator.num_pages }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.notification-filters {
+    position: sticky;
+    top: 20px;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.notification-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.notification-item.unread {
+    background: #f8f9ff;
+    border-left: 4px solid #0d6efd;
+}
+
+.notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.notification-icon i {
+    font-size: 1.2rem;
+    color: white;
+}
+
+.notification-icon.course { background: #0d6efd; }
+.notification-icon.achievement { background: #ffc107; }
+.notification-icon.reminder { background: #6f42c1; }
+.notification-icon.mention { background: #20c997; }
+.notification-icon.deadline { background: #dc3545; }
+.notification-icon.system { background: #6c757d; }
+.notification-icon.feedback { background: #0dcaf0; }
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.notification-time {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.notification-link {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.notification-link i {
+    margin-left: 5px;
+    font-size: 0.8rem;
+}
+
+.notification-actions {
+    margin-left: 15px;
+}
+
+@media (max-width: 768px) {
+    .notification-filters {
+        position: static;
+        margin-bottom: 20px;
+    }
+    
+    .notification-item {
+        flex-direction: column;
+    }
+    
+    .notification-icon {
+        margin-bottom: 10px;
+    }
+    
+    .notification-actions {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markAsRead(notificationId) {
+    fetch(`/api/notifications/${notificationId}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    }).then(response => {
+        if (response.ok) {
+            const notification = document.querySelector(
+                `.notification-item[data-id="${notificationId}"]`
+            );
+            notification.classList.remove('unread');
+            notification.querySelector('.notification-actions').innerHTML = `
+                <button class="btn btn-link btn-sm text-danger"
+                        onclick="deleteNotification(${notificationId})">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            updateUnreadCount();
+        }
+    });
+}
+
+function markAllAsRead() {
+    fetch('/api/notifications/mark-all-read/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    }).then(response => {
+        if (response.ok) {
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+                const notificationId = item.dataset.id;
+                item.querySelector('.notification-actions').innerHTML = `
+                    <button class="btn btn-link btn-sm text-danger"
+                            onclick="deleteNotification(${notificationId})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            });
+            updateUnreadCount(0);
+        }
+    });
+}
+
+function deleteNotification(notificationId) {
+    if (confirm('Tem certeza que deseja excluir esta notificação?')) {
+        fetch(`/api/notifications/${notificationId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        }).then(response => {
+            if (response.ok) {
+                const notification = document.querySelector(
+                    `.notification-item[data-id="${notificationId}"]`
+                );
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.remove();
+                    checkEmptyState();
+                }, 300);
+            }
+        });
+    }
+}
+
+function updateUnreadCount(count = null) {
+    const badge = document.querySelector('#notificationBadge');
+    if (count === null) {
+        fetch('/api/notifications/unread-count/')
+            .then(response => response.json())
+            .then(data => {
+                badge.textContent = data.count;
+                if (data.count === 0) {
+                    badge.style.display = 'none';
+                }
+            });
+    } else {
+        badge.textContent = count;
+        if (count === 0) {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+function checkEmptyState() {
+    const notifications = document.querySelectorAll('.notification-item');
+    const container = document.querySelector('#notificationList');
+    
+    if (notifications.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <img src="{% static 'images/no-notifications.svg' %}" 
+                     alt="Sem notificações"
+                     class="mb-4"
+                     style="max-width: 200px;">
+                <h5>Nenhuma notificação</h5>
+                <p class="text-muted">
+                    Você está em dia com todas as suas notificações!
+                </p>
+            </div>
+        `;
+    }
+}
+
+// Filtros
+document.querySelectorAll('.notification-types input, .notification-status input')
+    .forEach(checkbox => {
+        checkbox.addEventListener('change', filterNotifications);
+    });
+
+document.querySelector('#period_filter').addEventListener('change', filterNotifications);
+
+function filterNotifications() {
+    const selectedTypes = Array.from(
+        document.querySelectorAll('.notification-types input:checked')
+    ).map(cb => cb.value);
+    
+    const showRead = document.querySelector('#status_read').checked;
+    const showUnread = document.querySelector('#status_unread').checked;
+    const period = document.querySelector('#period_filter').value;
+    
+    document.querySelectorAll('.notification-item').forEach(item => {
+        const type = item.dataset.type;
+        const isUnread = item.classList.contains('unread');
+        const date = new Date(item.dataset.date);
+        
+        let showByType = selectedTypes.includes(type);
+        let showByStatus = (isUnread && showUnread) || (!isUnread && showRead);
+        let showByPeriod = true;
+        
+        if (period === 'today') {
+            showByPeriod = isToday(date);
+        } else if (period === 'week') {
+            showByPeriod = isThisWeek(date);
+        } else if (period === 'month') {
+            showByPeriod = isThisMonth(date);
+        }
+        
+        if (showByType && showByStatus && showByPeriod) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Alternar visualização
+document.querySelectorAll('[data-view]').forEach(button => {
+    button.addEventListener('click', function() {
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+        
+        const view = this.dataset.view;
+        const container = document.querySelector('#notificationList');
+        container.className = `notification-list view-${view}`;
+    });
+});
+</script>
+{% endblock %} 

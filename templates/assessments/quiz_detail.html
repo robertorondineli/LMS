@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3>{{ quiz.title }}</h3>
+            </div>
+            <div class="card-body">
+                <p>{{ quiz.description }}</p>
+                
+                <div class="quiz-info mt-4">
+                    <p><strong>Nota mínima para aprovação:</strong> {{ quiz.passing_score }}%</p>
+                    <p><strong>Tempo limite:</strong> {{ quiz.time_limit }} minutos</p>
+                    <p><strong>Total de questões:</strong> {{ quiz.question_set.count }}</p>
+                </div>
+                
+                {% if not quiz.question_set.exists %}
+                    <div class="alert alert-warning">
+                        Este quiz ainda não possui questões.
+                    </div>
+                {% else %}
+                    {% if user_can_attempt %}
+                        <a href="{% url 'assessments:quiz_attempt' quiz.id %}" 
+                           class="btn btn-primary btn-lg mt-3">
+                            Iniciar Quiz
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if attempts %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h4>Suas Tentativas</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Nota</th>
+                                    <th>Status</th>
+                                    <th>Tempo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attempt in attempts %}
+                                    <tr>
+                                        <td>{{ attempt.started_at|date:"d/m/Y H:i" }}</td>
+                                        <td>{{ attempt.score|floatformat:1 }}%</td>
+                                        <td>
+                                            {% if attempt.is_passed %}
+                                                <span class="badge bg-success">Aprovado</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Reprovado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if attempt.completed_at %}
+                                                {{ attempt.completed_at|timeuntil:attempt.started_at }}
+                                            {% else %}
+                                                Em andamento
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        {% if user.is_instructor %}
+            <div class="card">
+                <div class="card-header">
+                    <h4>Gerenciamento</h4>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'assessments:question_create' quiz.id %}" 
+                           class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Adicionar Questão
+                        </a>
+                        <a href="{% url 'assessments:quiz_edit' quiz.id %}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-edit"></i> Editar Quiz
+                        </a>
+                        <a href="{% url 'assessments:quiz_results' quiz.id %}" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-chart-bar"></i> Ver Resultados
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4>Estatísticas</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li>
+                        <i class="fas fa-users me-2"></i>
+                        Total de tentativas: {{ quiz.quizattempt_set.count }}
+                    </li>
+                    <li>
+                        <i class="fas fa-check-circle me-2"></i>
+                        Taxa de aprovação: {{ approval_rate|floatformat:1 }}%
+                    </li>
+                    <li>
+                        <i class="fas fa-chart-line me-2"></i>
+                        Média geral: {{ average_score|floatformat:1 }}%
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

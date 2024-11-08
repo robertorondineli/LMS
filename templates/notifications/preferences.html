@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Preferências de Notificação{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">Preferências de Notificação</h4>
+                    
+                    <form id="preferencesForm">
+                        <!-- Canais de Notificação -->
+                        <div class="mb-4">
+                            <h5>Canais de Notificação</h5>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="email_notifications"
+                                       name="email_notifications"
+                                       {% if preferences.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="email_notifications">
+                                    Notificações por Email
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="push_notifications"
+                                       name="push_notifications"
+                                       {% if preferences.push_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="push_notifications">
+                                    Notificações Push
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Tipos de Notificação -->
+                        <div class="mb-4">
+                            <h5>Tipos de Notificação</h5>
+                            <p class="text-muted small">
+                                Selecione os tipos de notificação que você deseja receber
+                            </p>
+                            
+                            {% for type, name in notification_types %}
+                                <div class="notification-type-item">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" 
+                                               class="form-check-input" 
+                                               id="type_{{ type }}"
+                                               name="type_{{ type }}"
+                                               {% if type in preferences.notification_types %}checked{% endif %}>
+                                        <label class="form-check-label" for="type_{{ type }}">
+                                            {{ name }}
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block">
+                                        {% if type == 'COURSE' %}
+                                            Atualizações sobre seus cursos e novo conteúdo
+                                        {% elif type == 'ACHIEVEMENT' %}
+                                            Conquistas, badges e recompensas
+                                        {% elif type == 'REMINDER' %}
+                                            Lembretes de atividades e prazos
+                                        {% elif type == 'MENTION' %}
+                                            Quando alguém mencionar você
+                                        {% elif type == 'DEADLINE' %}
+                                            Prazos importantes e datas limite
+                                        {% elif type == 'SYSTEM' %}
+                                            Atualizações do sistema e manutenção
+                                        {% elif type == 'FEEDBACK' %}
+                                            Feedback sobre suas atividades
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Horário Silencioso -->
+                        <div class="mb-4">
+                            <h5>Horário Silencioso</h5>
+                            <p class="text-muted small">
+                                Defina um período em que você não deseja receber notificações
+                            </p>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Início</label>
+                                        <input type="time" 
+                                               class="form-control" 
+                                               name="quiet_hours_start"
+                                               value="{{ preferences.quiet_hours_start|time:'H:i' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fim</label>
+                                        <input type="time" 
+                                               class="form-control" 
+                                               name="quiet_hours_end"
+                                               value="{{ preferences.quiet_hours_end|time:'H:i' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                Salvar Preferências
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.notification-type-item {
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    margin-bottom: 10px;
+}
+
+.notification-type-item:hover {
+    background: #f1f3f5;
+}
+
+.form-switch {
+    padding-left: 2.5em;
+}
+
+.form-switch .form-check-input {
+    width: 2em;
+}
+
+@media (max-width: 768px) {
+    .notification-type-item {
+        padding: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('preferencesForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/api/notifications/preferences/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            showToast('Preferências salvas com sucesso!', 'success');
+        } else {
+            showToast('Erro ao salvar preferências', 'error');
+        }
+    });
+});
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type} position-fixed bottom-0 end-0 m-3`;
+    toast.innerHTML = `
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    new bootstrap.Toast(toast).show();
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,110 @@
+/* Estilos para Badges e Níveis */
+.badge-card {
+    position: relative;
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.badge-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.badge-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+
+.badge-locked {
+    filter: grayscale(1) opacity(0.5);
+}
+
+.level-indicator {
+    position: relative;
+    padding: 20px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+}
+
+.level-progress {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.2);
+    margin: 10px 0;
+}
+
+.level-progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    background: #22c55e;
+    transition: width 0.5s ease;
+}
+
+.streak-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    border-radius: 10px;
+    color: white;
+}
+
+.streak-flame {
+    font-size: 24px;
+    animation: flame 1.5s infinite;
+}
+
+@keyframes flame {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Animações para Conquistas */
+.achievement-unlock {
+    animation: unlockAnimation 0.6s ease-out;
+}
+
+@keyframes unlockAnimation {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Leaderboard Styles */
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: white;
+    transition: transform 0.2s ease;
+}
+
+.leaderboard-item:hover {
+    transform: translateX(5px);
+}
+
+.leaderboard-rank {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.rank-1 { background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); }
+.rank-2 { background: linear-gradient(135deg, #c0c0c0 0%, #a9a9a9 100%); }
+.rank-3 { background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%); } 

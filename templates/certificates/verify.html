@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Verificar Certificado{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="verification-card">
+                {% if not verification_code %}
+                    <!-- Formulário de Verificação -->
+                    <div class="text-center mb-4">
+                        <img src="{% static 'images/verify-certificate.svg' %}" 
+                             alt="Verificar Certificado"
+                             class="mb-4"
+                             style="max-width: 200px;">
+                        <h3>Verificar Autenticidade do Certificado</h3>
+                        <p class="text-muted">
+                            Digite o código de verificação do certificado
+                        </p>
+                    </div>
+                    
+                    <form method="get" class="verification-form">
+                        <div class="input-group mb-3">
+                            <input type="text" 
+                                   name="code" 
+                                   class="form-control form-control-lg"
+                                   placeholder="Digite o código de verificação"
+                                   required>
+                            <button type="submit" class="btn btn-primary">
+                                Verificar
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    {% if is_valid %}
+                        <!-- Certificado Válido -->
+                        <div class="verification-result valid">
+                            <div class="text-center mb-4">
+                                <i class="fas fa-check-circle fa-5x text-success"></i>
+                                <h3 class="mt-3">Certificado Autêntico</h3>
+                                <p class="text-muted">
+                                    Este certificado é válido e foi emitido por nossa instituição
+                                </p>
+                            </div>
+                            
+                            <div class="certificate-details">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label>Aluno</label>
+                                            <p>{{ certificate.user.get_full_name }}</p>
+                                        </div>
+                                        <div class="detail-item">
+                                            <label>Curso</label>
+                                            <p>{{ certificate.course.title }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label>Data de Emissão</label>
+                                            <p>{{ certificate.issued_at|date:"d/m/Y" }}</p>
+                                        </div>
+                                        <div class="detail-item">
+                                            <label>Tipo</label>
+                                            <p>{{ certificate.get_type_display }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Certificado Inválido -->
+                        <div class="verification-result invalid text-center">
+                            <i class="fas fa-times-circle fa-5x text-danger"></i>
+                            <h3 class="mt-3">Certificado Não Encontrado</h3>
+                            <p class="text-muted">
+                                O código de verificação informado não corresponde a nenhum 
+                                certificado em nossa base de dados.
+                            </p>
+                            <a href="{% url 'certificates:verify' %}" class="btn btn-primary mt-3">
+                                Tentar Novamente
+                            </a>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.verification-card {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.verification-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.verification-result {
+    padding: 30px;
+    border-radius: 10px;
+}
+
+.verification-result.valid {
+    background: #f8fff9;
+}
+
+.verification-result.invalid {
+    background: #fff8f8;
+}
+
+.certificate-details {
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.detail-item {
+    margin-bottom: 20px;
+}
+
+.detail-item label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.detail-item p {
+    margin: 0;
+    font-weight: 500;
+}
+</style>
+{% endblock %} 

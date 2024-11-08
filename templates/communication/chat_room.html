@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chat - {{ room.name }}{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="row">
+        <!-- Lista de Participantes -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Participantes</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for participant in room.participants.all %}
+                        <div class="list-group-item">
+                            <div class="d-flex align-items-center">
+                                <img src="{{ participant.profile_picture.url|default:'default_avatar.png' }}" 
+                                     class="rounded-circle me-2" 
+                                     width="32" height="32">
+                                <div>
+                                    {{ participant.get_full_name }}
+                                    {% if participant.is_online %}
+                                        <span class="badge bg-success">online</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Área do Chat -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ room.name }}</h5>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#inviteModal">
+                                <i class="fas fa-user-plus"></i> Convidar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body chat-messages" id="chatMessages">
+                    {% for message in messages %}
+                        <div class="chat-message {% if message.author == request.user %}sent{% else %}received{% endif %}">
+                            {% if message.is_system_message %}
+                                <div class="system-message">
+                                    {{ message.content }}
+                                </div>
+                            {% else %}
+                                <div class="message-author">
+                                    <img src="{{ message.author.profile_picture.url|default:'default_avatar.png' }}" 
+                                         class="rounded-circle me-1" 
+                                         width="24" height="24">
+                                    <small>{{ message.author.get_full_name }}</small>
+                                </div>
+                                <div class="message-content">
+                                    {{ message.content }}
+                                    <small class="message-time">
+                                        {{ message.created_at|time:"H:i" }}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="card-footer">
+                    <form id="chatForm" class="chat-form">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   placeholder="Digite sua mensagem..." 
+                                   id="messageInput"
+                                   autocomplete="off">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Convite -->
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Convidar Participantes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inviteForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Selecione os usuários:</label>
+                        <select class="form-select" 
+                                multiple 
+                                name="users[]" 
+                                data-placeholder="Escolha os usuários...">
+                            {% for user in available_users %}
+                                <option value="{{ user.id }}">
+                                    {{ user.get_full_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        Enviar Convites
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.chat-messages {
+    height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.chat-message {
+    margin-bottom: 1rem;
+}
+
+.chat-message.sent {
+    text-align: right;
+}
+
+.message-author {
+    margin-bottom: 0.25rem;
+}
+
+.message-content {
+    display: inline-block;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    max-width: 70%;
+}
+
+.chat-message.sent .message-content {
+    background-color: #0d6efd;
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.chat-message.received .message-content {
+    background-color: #f8f9fa;
+    border-bottom-left-radius: 0.25rem;
+    text-align: left;
+}
+
+.system-message {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    margin: 1rem 0;
+}
+
+.message-time {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
+.chat-form {
+    padding: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/chat/room/' + '{{ room.id }}/'
+    );
+    
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    
+    // Rola para a última mensagem
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        appendMessage(data);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+    
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        
+        if (message) {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInput.value = '';
+        }
+    });
+    
+    // Inicializa Select2 para convites
+    $('.form-select').select2({
+        theme: 'bootstrap-5',
+        dropdownParent: $('#inviteModal')
+    });
+    
+    // Form de convite
+    $('#inviteForm').submit(function(e) {
+        e.preventDefault();
+        const users = $(this).find('select').val();
+        
+        fetch('{% url "communication:chat_invite" room.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({users: users})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                location.reload();
+            }
+        });
+    });
+});
+
+function appendMessage(data) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    
+    if (data.type === 'system') {
+        messageDiv.className = 'chat-message';
+        messageDiv.innerHTML = `
+            <div class="system-message">
+                ${data.message}
+            </div>
+        `;
+    } else {
+        messageDiv.className = `chat-message ${data.author_id === {{ request.user.id }} ? 'sent' : 'received'}`;
+        messageDiv.innerHTML = `
+            <div class="message-author">
+                <img src="${data.author_avatar}" class="rounded-circle me-1" width="24" height="24">
+                <small>${data.author_name}</small>
+            </div>
+            <div class="message-content">
+                ${data.message}
+                <small class="message-time">
+                    ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </small>
+            </div>
+        `;
+    }
+    
+    chatMessages.appendChild(messageDiv);
+}
+</script>
+{% endblock %} 

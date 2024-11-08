@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Minhas Badges{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Resumo de Badges -->
+    <div class="badges-summary mb-5">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-icon diamond">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>{{ diamond_badges_count }}</h3>
+                        <p>Badges Diamante</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-icon gold">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>{{ gold_badges_count }}</h3>
+                        <p>Badges Ouro</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-icon silver">
+                        <i class="fas fa-award"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>{{ silver_badges_count }}</h3>
+                        <p>Badges Prata</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-icon bronze">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>{{ bronze_badges_count }}</h3>
+                        <p>Badges Bronze</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="badges-filters mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h2>Minhas Badges</h2>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                        Todas
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-filter="earned">
+                        Conquistadas
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-filter="progress">
+                        Em Progresso
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grade de Badges -->
+    <div class="row" id="badgesGrid">
+        {% for badge in badges %}
+            {% with progress=badge_progress|get_item:badge.id %}
+            <div class="col-md-4 mb-4 badge-item" 
+                 data-status="{% if progress == 100 %}earned{% else %}progress{% endif %}">
+                <div class="badge-card {% if progress == 100 %}earned{% endif %}">
+                    <div class="badge-header">
+                        <div class="badge-icon {{ badge.level|lower }}">
+                            <img src="{{ badge.icon.url }}" alt="{{ badge.name }}">
+                        </div>
+                        <div class="badge-points">
+                            {{ badge.points }} pontos
+                        </div>
+                    </div>
+                    
+                    <div class="badge-content">
+                        <h5>{{ badge.name }}</h5>
+                        <p class="text-muted">{{ badge.description }}</p>
+                        
+                        {% if progress == 100 %}
+                            <div class="badge-earned">
+                                <i class="fas fa-check-circle"></i>
+                                Conquistada em {{ earned_badges|get_earned_date:badge|date }}
+                            </div>
+                        {% else %}
+                            <div class="badge-progress">
+                                <div class="progress">
+                                    <div class="progress-bar" 
+                                         role="progressbar" 
+                                         style="width: {{ progress }}%">
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    {{ progress }}% completo
+                                </small>
+                            </div>
+                            
+                            <div class="badge-requirements mt-3">
+                                <h6>Requisitos:</h6>
+                                <ul class="requirements-list">
+                                    {% for req in badge.requirements %}
+                                        <li class="{% if req|is_completed:user %}completed{% endif %}">
+                                            {{ req.description }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <img src="{% static 'images/no-badges.svg' %}" 
+                         alt="Sem badges"
+                         class="mb-4"
+                         style="max-width: 200px;">
+                    <h4>Nenhuma badge disponível</h4>
+                    <p class="text-muted">
+                        Continue participando para desbloquear badges!
+                    </p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.summary-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.summary-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-right: 15px;
+}
+
+.summary-icon.diamond { background: linear-gradient(45deg, #b9f2ff, #e5e4e2); }
+.summary-icon.gold { background: linear-gradient(45deg, #ffd700, #ffa500); }
+.summary-icon.silver { background: linear-gradient(45deg, #c0c0c0, #e8e8e8); }
+.summary-icon.bronze { background: linear-gradient(45deg, #cd7f32, #daa520); }
+
+.summary-info h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.summary-info p {
+    margin: 0;
+    color: #6c757d;
+}
+
+.badge-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    height: 100%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-card:hover {
+    transform: translateY(-5px);
+}
+
+.badge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.badge-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    padding: 5px;
+}
+
+.badge-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.badge-icon.diamond { background: linear-gradient(45deg, #b9f2ff, #e5e4e2); }
+.badge-icon.gold { background: linear-gradient(45deg, #ffd700, #ffa500); }
+.badge-icon.silver { background: linear-gradient(45deg, #c0c0c0, #e8e8e8); }
+.badge-icon.bronze { background: linear-gradient(45deg, #cd7f32, #daa520); }
+
+.badge-points {
+    background: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.badge-earned {
+    color: #28a745;
+    margin-top: 15px;
+}
+
+.badge-progress {
+    margin-top: 15px;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+}
+
+.requirements-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.requirements-list li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    color: #6c757d;
+}
+
+.requirements-list li::before {
+    content: '\f111';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    color: #dee2e6;
+}
+
+.requirements-list li.completed {
+    color: #28a745;
+}
+
+.requirements-list li.completed::before {
+    content: '\f058';
+    color: #28a745;
+}
+
+.badge-card.earned {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.badge-card.earned::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 30px;
+    height: 30px;
+    background: #28a745;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+@keyframes badgeEarned {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.badge-card.just-earned {
+    animation: badgeEarned 0.5s ease;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtros
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            const filter = button.dataset.filter;
+            filterBadges(filter);
+        });
+    });
+    
+    function filterBadges(filter) {
+        const badges = document.querySelectorAll('.badge-item');
+        badges.forEach(badge => {
+            if (filter === 'all' || badge.dataset.status === filter) {
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+    
+    // Verifica novas badges
+    function checkNewBadges() {
+        fetch('/api/badges/check/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.new_badges.length > 0) {
+                    data.new_badges.forEach(badge => {
+                        const badgeCard = document.querySelector(`[data-badge-id="${badge.id}"]`);
+                        if (badgeCard) {
+                            badgeCard.classList.add('earned', 'just-earned');
+                            showBadgeNotification(badge);
+                        }
+                    });
+                }
+            });
+    }
+    
+    function showBadgeNotification(badge) {
+        // Implementação da notificação
+    }
+    
+    // Verifica novas badges a cada 5 minutos
+    setInterval(checkNewBadges, 300000);
+});
+</script>
+{% endblock %} 

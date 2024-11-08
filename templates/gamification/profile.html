@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil de Gamificação - {{ user.get_full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.achievement-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.achievement-card:hover {
+    transform: translateY(-5px);
+}
+
+.achievement-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.level-progress {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    margin: 10px 0;
+}
+
+.streak-card {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    color: white;
+    border-radius: 15px;
+    padding: 25px;
+}
+
+.quest-card {
+    border-left: 4px solid #0d6efd;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.3s ease;
+}
+
+.quest-card:hover {
+    transform: translateX(5px);
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: white;
+}
+
+.leaderboard-position {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.position-1 { background: #ffd700; }
+.position-2 { background: #c0c0c0; }
+.position-3 { background: #cd7f32; }
+
+.achievement-bronze { background: #cd7f32; color: white; }
+.achievement-silver { background: #c0c0c0; color: white; }
+.achievement-gold { background: #ffd700; color: white; }
+.achievement-platinum { background: #e5e4e2; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Cabeçalho do Perfil -->
+    <div class="row mb-5">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center mb-4">
+                <img src="{{ user.profile_picture.url|default:'default_avatar.png' }}" 
+                     class="rounded-circle me-3" 
+                     width="80" height="80">
+                <div>
+                    <h2 class="mb-0">{{ user.get_full_name }}</h2>
+                    <p class="text-muted mb-0">
+                        Nível {{ user_level.level.number }} - {{ user_level.level.name }}
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Barra de Progresso do Nível -->
+            <div class="level-progress">
+                <div class="progress-bar" 
+                     role="progressbar" 
+                     style="width: {{ level_progress }}%">
+                </div>
+            </div>
+            <small class="text-muted">
+                {{ points_to_next }} pontos para o próximo nível
+            </small>
+        </div>
+        
+        <!-- Streak -->
+        <div class="col-md-4">
+            <div class="streak-card">
+                <div class="text-center">
+                    <i class="fas fa-fire fa-3x mb-3"></i>
+                    <h3 class="mb-0">{{ streak.current_streak }} dias</h3>
+                    <p class="mb-0">Sequência Atual</p>
+                    <small>Maior sequência: {{ streak.longest_streak }} dias</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conquistas e Missões -->
+    <div class="row">
+        <!-- Conquistas -->
+        <div class="col-md-8">
+            <h4 class="mb-4">Conquistas</h4>
+            <div class="row">
+                {% for user_achievement in achievements %}
+                    <div class="col-md-4">
+                        <div class="achievement-card">
+                            <div class="achievement-icon achievement-{{ user_achievement.achievement.level|lower }}">
+                                <i class="{{ user_achievement.achievement.icon }}"></i>
+                            </div>
+                            <h5>{{ user_achievement.achievement.name }}</h5>
+                            <p class="text-muted small mb-2">
+                                {{ user_achievement.achievement.description }}
+                            </p>
+                            <small class="text-muted">
+                                Conquistado em {{ user_achievement.earned_at|date }}
+                            </small>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <p class="text-muted text-center">
+                            Nenhuma conquista ainda. Continue estudando para desbloquear!
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Missões Ativas -->
+        <div class="col-md-4">
+            <h4 class="mb-4">Missões Ativas</h4>
+            {% for user_quest in active_quests %}
+                <div class="quest-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">{{ user_quest.quest.title }}</h6>
+                        <span class="badge bg-primary">
+                            {{ user_quest.quest.points }} pontos
+                        </span>
+                    </div>
+                    <p class="small text-muted mb-2">
+                        {{ user_quest.quest.description }}
+                    </p>
+                    <div class="progress" style="height: 5px;">
+                        <div class="progress-bar" 
+                             role="progressbar" 
+                             style="width: {{ user_quest.progress_percentage }}%">
+                        </div>
+                    </div>
+                    {% if user_quest.quest.expires_at %}
+                        <small class="text-danger">
+                            Expira em {{ user_quest.quest.expires_at|timeuntil }}
+                        </small>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="text-muted text-center">
+                    Nenhuma missão ativa no momento.
+                </p>
+            {% endfor %}
+
+            <!-- Ranking -->
+            <h4 class="mb-4 mt-5">Top 10 Alunos</h4>
+            {% for user_level in leaderboard %}
+                <div class="leaderboard-item">
+                    <div class="leaderboard-position position-{{ forloop.counter }}">
+                        {{ forloop.counter }}
+                    </div>
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <img src="{{ user_level.user.profile_picture.url|default:'default_avatar.png' }}" 
+                             class="rounded-circle me-2" 
+                             width="30" height="30">
+                        <div>
+                            <strong>{{ user_level.user.get_full_name }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                Nível {{ user_level.level.number }} - {{ user_level.total_points }} pontos
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Atualiza o progresso das missões em tempo real
+function updateQuestProgress() {
+    const questCards = document.querySelectorAll('.quest-card');
+    questCards.forEach(card => {
+        const questId = card.dataset.questId;
+        fetch(`/api/quests/${questId}/progress/`)
+            .then(response => response.json())
+            .then(data => {
+                const progressBar = card.querySelector('.progress-bar');
+                progressBar.style.width = `${data.progress_percentage}%`;
+                
+                if (data.completed) {
+                    card.classList.add('completed');
+                    setTimeout(() => {
+                        card.remove();
+                    }, 1000);
+                }
+            });
+    });
+}
+
+// Atualiza a cada minuto
+setInterval(updateQuestProgress, 60000);
+
+// Animações de conquistas
+const achievementCards = document.querySelectorAll('.achievement-card');
+achievementCards.forEach(card => {
+    card.addEventListener('mouseenter', () => {
+        const icon = card.querySelector('.achievement-icon i');
+        icon.classList.add('fa-bounce');
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        const icon = card.querySelector('.achievement-icon i');
+        icon.classList.remove('fa-bounce');
+    });
+});
+</script>
+{% endblock %} 

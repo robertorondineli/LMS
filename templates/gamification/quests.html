@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Missões{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Tabs de Missões -->
+    <ul class="nav nav-pills mb-4" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="pill" href="#daily">
+                <i class="fas fa-sun"></i> Missões Diárias
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="pill" href="#weekly">
+                <i class="fas fa-calendar-week"></i> Missões Semanais
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="pill" href="#special">
+                <i class="fas fa-star"></i> Missões Especiais
+            </a>
+        </li>
+    </ul>
+
+    <!-- Conteúdo das Tabs -->
+    <div class="tab-content">
+        <!-- Missões Diárias -->
+        <div class="tab-pane fade show active" id="daily">
+            <div class="row">
+                {% for quest in daily_quests %}
+                    <div class="col-md-4 mb-4">
+                        <div class="quest-card {% if quest.completed %}completed{% endif %}"
+                             data-quest-id="{{ quest.id }}">
+                            <div class="quest-header">
+                                <span class="quest-type">
+                                    <i class="fas fa-sun"></i> Diária
+                                </span>
+                                <span class="quest-points">
+                                    {{ quest.points }} pontos
+                                </span>
+                            </div>
+                            
+                            <h5>{{ quest.title }}</h5>
+                            <p class="text-muted">{{ quest.description }}</p>
+                            
+                            <div class="quest-progress">
+                                <div class="progress">
+                                    <div class="progress-bar" 
+                                         role="progressbar" 
+                                         style="width: {{ quest.progress_percentage }}%">
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    {{ quest.progress_percentage }}% completo
+                                </small>
+                            </div>
+                            
+                            <div class="quest-footer">
+                                <small class="text-danger">
+                                    Expira em {{ quest.expires_at|timeuntil }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <p class="text-center text-muted">
+                            Nenhuma missão diária disponível no momento.
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Missões Semanais -->
+        <div class="tab-pane fade" id="weekly">
+            <!-- Similar ao daily, mas com weekly_quests -->
+        </div>
+        
+        <!-- Missões Especiais -->
+        <div class="tab-pane fade" id="special">
+            <!-- Similar ao daily, mas com special_quests -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.quest-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    height: 100%;
+    transition: all 0.3s ease;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.quest-card:hover {
+    transform: translateY(-5px);
+}
+
+.quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.quest-type {
+    background: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.quest-points {
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.quest-progress {
+    margin: 15px 0;
+}
+
+.quest-footer {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f8f9fa;
+}
+
+.quest-card.completed {
+    background: #f8f9fa;
+}
+
+.quest-card.completed::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #28a745;
+    font-size: 20px;
+}
+
+.nav-pills .nav-link {
+    border-radius: 20px;
+    padding: 8px 20px;
+}
+
+.nav-pills .nav-link.active {
+    background: #0d6efd;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+}
+</style>
+{% endblock %} 

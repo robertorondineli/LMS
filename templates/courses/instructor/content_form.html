@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Novo Conteúdo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    Adicionar Conteúdo ao Módulo: {{ module.title }}
+                </h3>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="contentForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            {{ form.title|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.content_type|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div id="contentField">
+                                {{ form.content|as_crispy_field }}
+                            </div>
+                            <div id="fileField" style="display: none;">
+                                {{ form.file|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.order|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'courses:module_detail' module.id %}" 
+                           class="btn btn-secondary me-md-2">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            Adicionar Conteúdo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    function toggleFields() {
+        const contentType = $('#id_content_type').val();
+        if (contentType === 'TEXT') {
+            $('#contentField').show();
+            $('#fileField').hide();
+        } else {
+            $('#contentField').hide();
+            $('#fileField').show();
+        }
+    }
+    
+    $('#id_content_type').change(toggleFields);
+    toggleFields();
+    
+    // Validação do formulário
+    $('#contentForm').submit(function(e) {
+        const contentType = $('#id_content_type').val();
+        if (contentType === 'TEXT' && !$('#id_content').val()) {
+            e.preventDefault();
+            alert('Por favor, preencha o conteúdo do texto.');
+        } else if (contentType !== 'TEXT' && !$('#id_file').val()) {
+            e.preventDefault();
+            alert('Por favor, selecione um arquivo.');
+        }
+    });
+});
+</script>
+{% endblock %} 

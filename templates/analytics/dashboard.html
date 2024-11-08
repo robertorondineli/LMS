@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard Analytics{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css">
+<style>
+.analytics-container {
+    padding: 20px;
+}
+
+.metric-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.metric-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.course-card {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.course-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e9ecef;
+    border-radius: 8px;
+    margin-right: 15px;
+}
+
+.progress-small {
+    height: 4px;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <!-- Filtros de Período -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="d-flex align-items-center">
+                        <label class="me-3">Período:</label>
+                        <select name="period" class="form-select me-3" style="width: 200px;" onchange="this.form.submit()">
+                            <option value="7" {% if period == '7' %}selected{% endif %}>Últimos 7 dias</option>
+                            <option value="30" {% if period == '30' %}selected{% endif %}>Últimos 30 dias</option>
+                            <option value="90" {% if period == '90' %}selected{% endif %}>Últimos 90 dias</option>
+                            <option value="365" {% if period == '365' %}selected{% endif %}>Último ano</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Atualizar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Principais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ total_users }}</div>
+                <div class="metric-label">Usuários Ativos</div>
+                <div class="metric-change text-success">
+                    <i class="fas fa-arrow-up"></i> +{{ user_growth }}% vs período anterior
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ total_courses }}</div>
+                <div class="metric-label">Cursos Ativos</div>
+                <div class="metric-change text-primary">
+                    <i class="fas fa-graduation-cap"></i> {{ active_courses }} em andamento
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ avg_completion_rate|floatformat:1 }}%</div>
+                <div class="metric-label">Taxa Média de Conclusão</div>
+                <div class="metric-change">
+                    <div class="progress progress-small">
+                        <div class="progress-bar" style="width: {{ avg_completion_rate }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value">{{ engagement_rate|floatformat:1 }}%</div>
+                <div class="metric-label">Taxa de Engajamento</div>
+                <div class="metric-change text-{% if engagement_trend > 0 %}success{% else %}danger{% endif %}">
+                    <i class="fas fa-arrow-{% if engagement_trend > 0 %}up{% else %}down{% endif %}"></i> 
+                    {{ engagement_trend|abs }}% vs período anterior
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row">
+        <!-- Engajamento ao Longo do Tempo -->
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5>Engajamento ao Longo do Tempo</h5>
+                <canvas id="engagementChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Distribuição de Progresso -->
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5>Distribuição de Progresso</h5>
+                <canvas id="progressDistribution"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Cursos -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top Cursos</h5>
+                </div>
+                <div class="card-body">
+                    {% for course in top_courses %}
+                        <div class="course-card">
+                            <div class="course-icon">
+                                <i class="fas fa-book fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ course.title }}</h6>
+                                    <span class="badge bg-primary">{{ course.students }} alunos</span>
+                                </div>
+                                <div class="text-muted small">
+                                    Progresso médio: {{ course.avg_progress|floatformat:1 }}%
+                                </div>
+                                <div class="progress progress-small">
+                                    <div class="progress-bar" style="width: {{ course.avg_progress }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métricas de Conteúdo -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance de Conteúdo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Visualizações</th>
+                                    <th>Tempo Médio</th>
+                                    <th>Taxa de Conclusão</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for content in content_performance %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-{{ content.get_icon }} me-2"></i>
+                                            {{ content.get_type_display }}
+                                        </td>
+                                        <td>{{ content.views }}</td>
+                                        <td>{{ content.avg_time_spent|time:"H:i:s" }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {{ content.completion_rate|floatformat:1 }}%
+                                                <div class="progress progress-small ms-2" style="width: 100px;">
+                                                    <div class="progress-bar" style="width: {{ content.completion_rate }}%">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Engajamento
+    const engagementCtx = document.getElementById('engagementChart').getContext('2d');
+    new Chart(engagementCtx, {
+        type: 'line',
+        data: {
+            labels: {{ engagement_data.dates|safe }},
+            datasets: [{
+                label: 'Usuários Ativos',
+                data: {{ engagement_data.active_users|safe }},
+                borderColor: '#0d6efd',
+                tension: 0.4,
+                fill: false
+            }, {
+                label: 'Taxa de Rejeição',
+                data: {{ engagement_data.bounce_rate|safe }},
+                borderColor: '#dc3545',
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Gráfico de Distribuição de Progresso
+    const progressCtx = document.getElementById('progressDistribution').getContext('2d');
+    new Chart(progressCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ progress_distribution.labels|safe }},
+            datasets: [{
+                data: {{ progress_distribution.data|safe }},
+                backgroundColor: [
+                    '#dc3545',
+                    '#ffc107',
+                    '#0dcaf0',
+                    '#198754',
+                    '#0d6efd'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

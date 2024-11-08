@@ -1,0 +1,475 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar{% else %}Novo{% endif %} Conteúdo
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+.editor-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.editor-toolbar {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.editor-content {
+    min-height: 400px;
+    padding: 1rem;
+}
+
+.metadata-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.version-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.attachment-preview {
+    max-width: 150px;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.tag-badge {
+    background: #e9ecef;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.ql-container {
+    font-size: 16px;
+}
+
+.autosave-status {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    display: none;
+}
+
+.preview-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100%;
+    background: white;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    padding: 2rem;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.preview-panel.active {
+    transform: translateX(0);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <form method="post" enctype="multipart/form-data" id="contentForm">
+        {% csrf_token %}
+        
+        <!-- Barra Superior -->
+        <div class="row mb-4">
+            <div class="col">
+                <h4>
+                    {% if form.instance.pk %}
+                        Editar {{ form.instance.title }}
+                    {% else %}
+                        Novo Conteúdo
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="col-auto">
+                <div class="btn-group">
+                    <button type="button" 
+                            class="btn btn-outline-secondary"
+                            onclick="togglePreview()">
+                        <i class="fas fa-eye"></i> 
+                        Prévia
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-primary"
+                            onclick="saveAsDraft()">
+                        <i class="fas fa-save"></i> 
+                        Salvar Rascunho
+                    </button>
+                    <button type="submit" 
+                            class="btn btn-primary"
+                            name="action"
+                            value="publish">
+                        <i class="fas fa-paper-plane"></i> 
+                        Publicar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Editor Principal -->
+            <div class="col-lg-8">
+                <!-- Metadados Básicos -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label for="id_title">Título</label>
+                                    {{ form.title }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="id_content_type">Tipo</label>
+                                    {{ form.content_type }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="id_description">Descrição</label>
+                            {{ form.description }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Editor de Conteúdo -->
+                <div class="editor-container mb-4">
+                    <div id="editor">{{ form.rich_text.value|safe }}</div>
+                </div>
+                
+                <!-- Anexos -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Anexos</h5>
+                        <div class="attachment-list" id="attachmentList">
+                            {% for attachment in form.instance.attachments.all %}
+                                <div class="attachment-item mb-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            {% if attachment.file_type in 'jpg,jpeg,png,gif'|split:',' %}
+                                                <img src="{{ attachment.file.url }}" 
+                                                     class="attachment-preview">
+                                            {% else %}
+                                                <i class="fas fa-file fa-2x"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col">
+                                            <h6>{{ attachment.title }}</h6>
+                                            <small class="text-muted">
+                                                {{ attachment.file_type }} - 
+                                                {{ attachment.size|filesizeformat }}
+                                            </small>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    onclick="removeAttachment({{ attachment.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="dropzone" id="attachmentDropzone">
+                            <div class="dz-message">
+                                Arraste arquivos aqui ou clique para fazer upload
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Barra Lateral -->
+            <div class="col-lg-4">
+                <!-- Status e Versão -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Status</h5>
+                        {% if form.instance.pk %}
+                            <div class="version-info">
+                                Versão {{ form.instance.versions.count }}
+                                <br>
+                                Última atualização: 
+                                {{ form.instance.updated_at|date:"d/m/Y H:i" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="id_status">Status atual</label>
+                            {{ form.status }}
+                        </div>
+                        
+                        {% if form.instance.status == 'REVIEW' %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i>
+                                Este conteúdo está em revisão
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Tags e Metadados -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Tags e Metadados</h5>
+                        
+                        <div class="form-group mb-3">
+                            <label for="id_tags">Tags</label>
+                            <select class="form-control" 
+                                    id="id_tags" 
+                                    name="tags[]" 
+                                    multiple>
+                                {% for tag in form.instance.tags %}
+                                    <option value="{{ tag }}" selected>
+                                        {{ tag }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div id="metadataFields">
+                            {% for key, value in form.instance.metadata.items %}
+                                <div class="metadata-field mb-2">
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control metadata-key" 
+                                               value="{{ key }}"
+                                               placeholder="Chave">
+                                        <input type="text" 
+                                               class="form-control metadata-value" 
+                                               value="{{ value }}"
+                                               placeholder="Valor">
+                                        <button type="button" 
+                                                class="btn btn-outline-danger"
+                                                onclick="removeMetadataField(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <button type="button" 
+                                class="btn btn-outline-secondary btn-sm mt-2"
+                                onclick="addMetadataField()">
+                            <i class="fas fa-plus"></i> 
+                            Adicionar Metadado
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Configurações Avançadas -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Configurações Avançadas</h5>
+                        
+                        <div class="form-group">
+                            <label for="id_slug">URL Personalizada</label>
+                            {{ form.slug }}
+                        </div>
+                        
+                        {% if form.instance.content_type == 'VIDEO' %}
+                            <div class="form-group mt-3">
+                                <label for="id_media_url">URL do Vídeo</label>
+                                {{ form.media_url }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Painel de Prévia -->
+<div class="preview-panel" id="previewPanel">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5>Prévia</h5>
+        <button type="button" 
+                class="btn-close"
+                onclick="togglePreview()"></button>
+    </div>
+    <div class="preview-content"></div>
+</div>
+
+<!-- Status do Autosave -->
+<div class="autosave-status" id="autosaveStatus">
+    Salvando...
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+<script>
+// Inicializa o editor
+const quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+        toolbar: [
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            [{ 'direction': 'rtl' }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean'],
+            ['link', 'image', 'video']
+        ]
+    }
+});
+
+// Select2 para tags
+$('#id_tags').select2({
+    tags: true,
+    tokenSeparators: [',', ' '],
+    placeholder: 'Adicione tags...'
+});
+
+// Dropzone para anexos
+Dropzone.autoDiscover = false;
+new Dropzone("#attachmentDropzone", {
+    url: "/api/content/upload-attachment/",
+    headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    acceptedFiles: 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx',
+    addRemoveLinks: true,
+    success: function(file, response) {
+        addAttachmentToList(response);
+    }
+});
+
+// Autosave
+let autosaveTimeout;
+quill.on('text-change', function() {
+    clearTimeout(autosaveTimeout);
+    showAutosaveStatus('Salvando...');
+    
+    autosaveTimeout = setTimeout(() => {
+        saveContent(true)
+            .then(() => showAutosaveStatus('Salvo!'))
+            .catch(() => showAutosaveStatus('Erro ao salvar', true));
+    }, 2000);
+});
+
+function showAutosaveStatus(message, isError = false) {
+    const status = document.getElementById('autosaveStatus');
+    status.textContent = message;
+    status.style.display = 'block';
+    status.className = `autosave-status ${isError ? 'bg-danger' : ''}`;
+    
+    setTimeout(() => {
+        status.style.display = 'none';
+    }, 3000);
+}
+
+async function saveContent(isDraft = false) {
+    const form = document.getElementById('contentForm');
+    const formData = new FormData(form);
+    
+    // Adiciona conteúdo do editor
+    formData.set('rich_text', quill.root.innerHTML);
+    
+    // Adiciona metadados
+    const metadata = {};
+    document.querySelectorAll('.metadata-field').forEach(field => {
+        const key = field.querySelector('.metadata-key').value;
+        const value = field.querySelector('.metadata-value').value;
+        if (key) metadata[key] = value;
+    });
+    formData.set('metadata', JSON.stringify(metadata));
+    
+    // Define status
+    formData.set('status', isDraft ? 'DRAFT' : 'PUBLISHED');
+    
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error('Erro ao salvar');
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        throw error;
+    }
+}
+
+function addMetadataField() {
+    const field = document.createElement('div');
+    field.className = 'metadata-field mb-2';
+    field.innerHTML = `
+        <div class="input-group">
+            <input type="text" 
+                   class="form-control metadata-key" 
+                   placeholder="Chave">
+            <input type="text" 
+                   class="form-control metadata-value" 
+                   placeholder="Valor">
+            <button type="button" 
+                    class="btn btn-outline-danger"
+                    onclick="removeMetadataField(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    document.getElementById('metadataFields').appendChild(field);
+}
+
+function removeMetadataField(button) {
+    button.closest('.metadata-field').remove();
+}
+
+function togglePreview() {
+    const panel = document.getElementById('previewPanel');
+    panel.classList.toggle('active');
+    
+    if (panel.classList.contains('active')) {
+        const content = quill.root.innerHTML;
+        panel.querySelector('.preview-content').innerHTML = content;
+    }
+}
+
+// Confirma saída se houver alterações não salvas
+window.onbeforeunload = function() {
+    if (quill.getText().trim().length > 0) {
+        return "Há alterações não salvas. Deseja realmente sair?";
+    }
+};
+</script>
+{% endblock %} 

@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="assessment-container">
+    <!-- Barra Superior -->
+    <div class="assessment-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h4>{{ assessment.title }}</h4>
+                </div>
+                <div class="col-auto">
+                    {% if assessment.time_limit %}
+                        <div class="timer" id="timer">
+                            <i class="fas fa-clock"></i>
+                            <span id="timeRemaining">{{ minutes_remaining }}:00</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-danger" 
+                            onclick="confirmExit()">
+                        <i class="fas fa-times"></i> 
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="container py-4">
+        <div class="row">
+            <!-- Área das Questões -->
+            <div class="col-md-8">
+                <div class="question-container">
+                    {% for question in questions %}
+                        <div class="question-card {% if forloop.first %}active{% endif %}" 
+                             id="question-{{ forloop.counter }}"
+                             data-question-id="{{ question.id }}">
+                            
+                            <div class="question-header">
+                                <span class="question-number">
+                                    Questão {{ forloop.counter }}
+                                </span>
+                                <span class="question-points">
+                                    {{ question.points }} pontos
+                                </span>
+                            </div>
+                            
+                            <div class="question-content">
+                                {{ question.content|safe }}
+                            </div>
+                            
+                            <div class="question-options">
+                                {% if question.type == 'MULTIPLE_CHOICE' %}
+                                    {% for option in question.options.all %}
+                                        <div class="form-check">
+                                            <input type="checkbox" 
+                                                   class="form-check-input" 
+                                                   id="option-{{ option.id }}"
+                                                   name="question-{{ question.id }}"
+                                                   value="{{ option.id }}">
+                                            <label class="form-check-label" 
+                                                   for="option-{{ option.id }}">
+                                                {{ option.content }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                {% elif question.type == 'TRUE_FALSE' %}
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" 
+                                               class="btn-check" 
+                                               name="question-{{ question.id }}"
+                                               id="true-{{ question.id }}"
+                                               value="true">
+                                        <label class="btn btn-outline-success" 
+                                               for="true-{{ question.id }}">
+                                            Verdadeiro
+                                        </label>
+                                        
+                                        <input type="radio" 
+                                               class="btn-check" 
+                                               name="question-{{ question.id }}"
+                                               id="false-{{ question.id }}"
+                                               value="false">
+                                        <label class="btn btn-outline-danger" 
+                                               for="false-{{ question.id }}">
+                                            Falso
+                                        </label>
+                                    </div>
+                                {% elif question.type == 'ESSAY' %}
+                                    <div class="form-group">
+                                        <textarea class="form-control" 
+                                                  rows="6"
+                                                  placeholder="Digite sua resposta aqui..."
+                                                  name="question-{{ question.id }}"></textarea>
+                                    </div>
+                                {% elif question.type == 'CODING' %}
+                                    <div class="code-editor" 
+                                         id="editor-{{ question.id }}"></div>
+                                {% elif question.type == 'MATCHING' %}
+                                    <div class="matching-container">
+                                        {% for pair in question.matching_pairs %}
+                                            <div class="matching-item">
+                                                <div class="matching-left">
+                                                    {{ pair.left }}
+                                                </div>
+                                                <select class="form-select matching-right"
+                                                        name="match-{{ pair.id }}">
+                                                    <option value="">Selecione...</option>
+                                                    {% for option in pair.options %}
+                                                        <option value="{{ option.id }}">
+                                                            {{ option.content }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="question-feedback" style="display: none;">
+                                <div class="alert" role="alert"></div>
+                            </div>
+                            
+                            <div class="question-actions">
+                                <button class="btn btn-primary" 
+                                        onclick="submitAnswer({{ question.id }})">
+                                    Responder
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Navegação Lateral -->
+            <div class="col-md-4">
+                <div class="question-navigator">
+                    <h5>Progresso</h5>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" 
+                             role="progressbar"
+                             style="width: 0%"
+                             id="progressBar">
+                            0%
+                        </div>
+                    </div>
+                    
+                    <div class="question-grid">
+                        {% for question in questions %}
+                            <button class="question-button {% if forloop.first %}active{% endif %}"
+                                    onclick="navigateToQuestion({{ forloop.counter }})"
+                                    id="nav-{{ forloop.counter }}">
+                                {{ forloop.counter }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="status-dot answered"></span>
+                            Respondida
+                        </div>
+                        <div class="legend-item">
+                            <span class="status-dot current"></span>
+                            Atual
+                        </div>
+                        <div class="legend-item">
+                            <span class="status-dot pending"></span>
+                            Pendente
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-success btn-lg w-100 mt-4" 
+                            onclick="finishAssessment()"
+                            id="finishButton"
+                            disabled>
+                        Finalizar Avaliação
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="exitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Saída</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja sair? Seu progresso será perdido.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-secondary" 
+                        data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <a href="{% url 'assessment_detail' assessment.id %}" 
+                   class="btn btn-danger">
+                    Sair
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.assessment-container {
+    min-height: 100vh;
+    background: #f8f9fa;
+}
+
+.assessment-header {
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.timer {
+    background: #e9ecef;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.timer i {
+    color: #dc3545;
+    margin-right: 5px;
+}
+
+.question-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.question-card.active {
+    display: block;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.question-number {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.question-points {
+    background: #e9ecef;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.9rem;
+}
+
+.question-content {
+    margin-bottom: 2rem;
+}
+
+.question-options {
+    margin-bottom: 2rem;
+}
+
+.question-navigator {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    position: sticky;
+    top: 5rem;
+}
+
+.question-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.question-button {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 4px;
+    background: #e9ecef;
+    font-weight: 500;
+}
+
+.question-button.active {
+    background: #0d6efd;
+    color: white;
+}
+
+.question-button.answered {
+    background: #198754;
+    color: white;
+}
+
+.legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-dot.answered {
+    background: #198754;
+}
+
+.status-dot.current {
+    background: #0d6efd;
+}
+
+.status-dot.pending {
+    background: #e9ecef;
+}
+
+.matching-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.matching-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.matching-left {
+    flex: 1;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.matching-right {
+    flex: 1;
+}
+
+.code-editor {
+    height: 300px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .question-navigator {
+        position: static;
+        margin-top: 1rem;
+    }
+    
+    .matching-item {
+        flex-direction: column;
+    }
+    
+    .matching-left,
+    .matching-right {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentQuestion = 1;
+let totalQuestions = {{ questions|length }};
+let answeredQuestions = new Set();
+let assessmentTimer;
+
+// Inicializa o timer se necessário
+{% if assessment.time_limit %}
+    initializeTimer({{ minutes_remaining }});
+{% endif %}
+
+function initializeTimer(minutes) {
+    let timeLeft = minutes * 60;
+    
+    assessmentTimer = setInterval(() => {
+        timeLeft--;
+        
+        if (timeLeft <= 0) {
+            clearInterval(assessmentTimer);
+            autoSubmitAssessment();
+        }
+        
+        const minutesLeft = Math.floor(timeLeft / 60);
+        const secondsLeft = timeLeft % 60;
+        
+        document.getElementById('timeRemaining').textContent = 
+            `${minutesLeft}:${secondsLeft.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 300) {  // 5 minutos restantes
+            document.getElementById('timer').classList.add('warning');
+        }
+    }, 1000);
+}
+
+function navigateToQuestion(number) {
+    // Esconde questão atual
+    document.querySelector('.question-card.active').classList.remove('active');
+    document.querySelector('.question-button.active').classList.remove('active');
+    
+    // Mostra nova questão
+    document.getElementById(`question-${number}`).classList.add('active');
+    document.getElementById(`nav-${number}`).classList.add('active');
+    
+    currentQuestion = number;
+}
+
+function submitAnswer(questionId) {
+    const questionCard = document.querySelector(`[data-question-id="${questionId}"]`);
+    const questionType = questionCard.dataset.type;
+    let answerData = {};
+    
+    // Coleta dados baseado no tipo de questão
+    if (questionType === 'MULTIPLE_CHOICE') {
+        answerData.selected_options = Array.from(
+            questionCard.querySelectorAll('input:checked')
+        ).map(input => input.value);
+    } else if (questionType === 'TRUE_FALSE') {
+        answerData.answer = questionCard.querySelector('input:checked').value;
+    } else if (questionType === 'ESSAY') {
+        answerData.text = questionCard.querySelector('textarea').value;
+    } else if (questionType === 'CODING') {
+        answerData.code = editors[questionId].getValue();
+    } else if (questionType === 'MATCHING') {
+        answerData.matches = Array.from(
+            questionCard.querySelectorAll('select')
+        ).map(select => ({
+            left: select.dataset.left,
+            right: select.value
+        }));
+    }
+    
+    // Envia resposta
+    fetch(`/api/assessments/${user_assessment.id}/submit-answer/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            question_id: questionId,
+            ...answerData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Marca questão como respondida
+            answeredQuestions.add(currentQuestion);
+            document.getElementById(`nav-${currentQuestion}`).classList.add('answered');
+            
+            // Mostra feedback
+            const feedbackDiv = questionCard.querySelector('.question-feedback');
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.querySelector('.alert').className = 
+                `alert alert-${data.points_earned > 0 ? 'success' : 'danger'}`;
+            feedbackDiv.querySelector('.alert').textContent = data.feedback;
+            
+            // Atualiza progresso
+            updateProgress();
+            
+            // Avança para próxima questão se não for a última
+            if (currentQuestion < totalQuestions) {
+                setTimeout(() => navigateToQuestion(currentQuestion + 1), 1500);
+            }
+        } else {
+            showToast(data.error, 'error');
+        }
+    });
+}
+
+function updateProgress() {
+    const progress = (answeredQuestions.size / totalQuestions) * 100;
+    document.getElementById('progressBar').style.width = `${progress}%`;
+    document.getElementById('progressBar').textContent = `${Math.round(progress)}%`;
+    
+    // Habilita botão de finalizar se todas as questões foram respondidas
+    document.getElementById('finishButton').disabled = 
+        answeredQuestions.size !== totalQuestions;
+}
+
+function finishAssessment() {
+    if (!confirm('Tem certeza que deseja finalizar a avaliação?')) {
+        return;
+    }
+    
+    fetch(`/api/assessments/${user_assessment.id}/complete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            clearInterval(assessmentTimer);
+            window.location.href = data.redirect_url;
+        } else {
+            showToast(data.error, 'error');
+        }
+    });
+}
+
+function autoSubmitAssessment() {
+    showToast('Tempo esgotado! Enviando avaliação...', 'warning');
+    finishAssessment();
+}
+
+function confirmExit() {
+    const modal = new bootstrap.Modal(document.getElementById('exitModal'));
+    modal.show();
+}
+
+// Inicializa editores de código se necessário
+const editors = {};
+document.querySelectorAll('.code-editor').forEach(editor => {
+    const id = editor.id.split('-')[1];
+    editors[id] = ace.edit(editor.id);
+    editors[id].setTheme('ace/theme/monokai');
+    editors[id].session.setMode('ace/mode/python');
+});
+</script>
+{% endblock %} 
