@@ -212,8 +212,8 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 Em caso de dúvidas ou problemas:
 - Abra uma issue
-- Email: suporte@learning-system.com
-- Discord: [Link do servidor]
+- Email: ...
+- Discord: [https://discord.gg/km2yqJzs]
 
 ## 🎉 Agradecimentos
 
@@ -224,4 +224,4 @@ Em caso de dúvidas ou problemas:
 - Todos os contribuidores
 
 ---
-⌨️ com ❤️ por [Seu Nome](https://github.com/seu-usuario) 😊
+⌨️ com ❤️ por [Roberto](https://github.com/robertorondineli) 😊
