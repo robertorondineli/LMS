@@ -75,10 +75,7 @@ Sistema completo de aprendizado online com funcionalidades de cursos, avaliaçõ
 - PostgreSQL
 - Redis
 - Celery
-- React
 - Bootstrap 5
-- Docker
-- AWS S3
 
 ## 🚀 Configuração do Ambiente
 
