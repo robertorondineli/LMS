@@ -73,9 +73,6 @@ Sistema completo de aprendizado online com funcionalidades de cursos, avaliaçõ
 - Django 4.2
 - Django REST Framework
 - PostgreSQL
-- Redis
-- Celery
-- Bootstrap 5
 
 ## 🚀 Configuração do Ambiente
 
