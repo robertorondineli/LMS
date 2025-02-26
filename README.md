@@ -1,17 +1,6 @@
 # DJ LMS
 ![Badge em Desenvolvimento](http://img.shields.io/static/v1?label=STATUS&message=EM%20DESENVOLVIMENTO&color=GREEN&style=for-the-badge)
 
-## 📋 Índice
-
-* [Sobre o Projeto](#sobre-o-projeto)
-* [Funcionalidades](#funcionalidades)
-* [Tecnologias Utilizadas](#tecnologias-utilizadas)
-* [Configuração do Ambiente](#configuração-do-ambiente)
-* [Estrutura do Projeto](#estrutura-do-projeto)
-* [API Documentation](#api-documentation)
-* [Contribuição](#contribuição)
-* [Licença](#licença)
-
 ## 🎯 Sobre o Projeto
 
 Este sistema foi baseado no conceito de LMS (Learning Management System), ou Sistema de Gestão de Aprendizagem, que busca facilitar a criação, gerenciamento e acompanhamento de cursos online. Seguindo essa ideia, a plataforma oferece recursos como gestão de cursos, avaliações, eventos, gamificação e muito mais.
