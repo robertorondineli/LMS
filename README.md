@@ -14,7 +14,7 @@
 
 ## 🎯 Sobre o Projeto
 
-Sistema completo de aprendizado online com funcionalidades de cursos, avaliações, eventos, gamificação e muito mais. Desenvolvido com Django e React, seguindo as melhores práticas de desenvolvimento e arquitetura de software.
+Este sistema foi baseado no conceito de LMS (Learning Management System), ou Sistema de Gestão de Aprendizagem, que busca facilitar a criação, gerenciamento e acompanhamento de cursos online. Seguindo essa ideia, a plataforma oferece recursos como gestão de cursos, avaliações, eventos, gamificação e muito mais.
 
 ## ⚙️ Funcionalidades
 
