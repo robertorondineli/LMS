@@ -42,19 +42,9 @@ Este sistema foi baseado no conceito de LMS (Learning Management System), ou Sis
 - Inscrições
 - Certificados
 
-### Sistema de Conteúdo
-- Editor rico WYSIWYG
-- Versionamento
-- Sistema de revisão
+### Sistema de Conteúdoo
 - Importação/Exportação
 - Gestão de mídia
-
-### Sistema de API REST
-- Endpoints RESTful
-- Autenticação via Token
-- Rate limiting
-- Documentação OpenAPI
-- Versionamento
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -172,24 +162,22 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 📊 Status do Projeto
 
-### Implementado ✅
-- Sistema de Autenticação e Usuários
-- Sistema de Cursos
-- Sistema de Gamificação
-- Sistema de Certificados
-- Sistema de Recomendações
-- Sistema de Analytics
-- Sistema de Notificações
-- Sistema de Avaliações
-- Sistema de Conteúdo
-- Sistema de Eventos
-- API REST
-
 ### Em Desenvolvimento 🚧
 - Sistema de Suporte
 - Sistema de Internacionalização
 - Aplicativo Mobile
 - Integrações com terceiros
+- Sistema de Autenticação e Usuários
+- Sistema de Cursos
+- Sistema de Gamificação
+- Sistema de Certificados
+- Sisema de Analytics
+- Sistema de Notificações
+- Sistema de Avaliações
+- Sistema de Conteúdo
+- Sistema de Eventos
+- API RESTtema de Recomendações
+- Sist
 
 ## 📞 Suporte
 
